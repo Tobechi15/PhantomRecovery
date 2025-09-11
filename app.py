@@ -52,22 +52,27 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ----------------- Database Models -----------------
+# ----------------- Database Models -----------------
 class User(db.Model):
-    __tablename__ = "users"
+    __tablename__ = "users"  # 👈 avoid reserved word
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    profile_image = db.Column(db.String(200), nullable=True) 
+    profile_image = db.Column(db.String(200), nullable=True)
+
 
 class PasswordReset(db.Model):
+    __tablename__ = "password_resets"  # 👈 add explicit name
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False)
     code = db.Column(db.String(6), nullable=False)
     created_at = db.Column(db.Float, default=time.time)
 
+
 class Case(db.Model):
+    __tablename__ = "cases"  # 👈 add explicit name
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), nullable=False)
     issue_type = db.Column(db.String(255))
@@ -75,20 +80,26 @@ class Case(db.Model):
     transaction_id = db.Column(db.String(255))
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    updated_at = db.Column(
+        db.DateTime,
+        default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp(),
+    )
+
 
 # ----------------- Schema Helper -----------------
 def ensure_schema():
     inspector = db.inspect(db.engine)
     tables = inspector.get_table_names()
-    if "users" not in tables:
+
+    if "users" not in tables:   # 👈 check new name
         db.create_all()
         return
 
-    cols = [c["name"] for c in inspector.get_columns("user")]
+    cols = [c["name"] for c in inspector.get_columns("users")]
     if "username" not in cols:
         with db.engine.begin() as conn:
-            conn.execute(text('ALTER TABLE "user" ADD COLUMN username VARCHAR(80);'))
+            conn.execute(text('ALTER TABLE "users" ADD COLUMN username VARCHAR(80);'))
 
         existing = User.query.all()
         taken = set(u.username.lower() for u in existing if u.username)
@@ -105,7 +116,9 @@ def ensure_schema():
         for u in existing:
             if not u.username or u.username.strip() == "":
                 base = (u.email.split("@")[0] if u.email else "user").strip()
-                base = "".join(ch for ch in base if ch.isalnum() or ch in ("_", ".", "-"))[:80] or "user"
+                base = "".join(
+                    ch for ch in base if ch.isalnum() or ch in ("_", ".", "-")
+                )[:80] or "user"
                 u.username = unique_username(base)
         db.session.commit()
 
