@@ -579,5 +579,8 @@ if __name__ == "__main__":
             db.drop_all()
             db.create_all()
         else:
+            # always ensure schema, and create missing tables
+            db.create_all()
             ensure_schema()
     app.run(host="0.0.0.0", port=5000, debug=False)
+
