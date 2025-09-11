@@ -21,11 +21,6 @@ app.secret_key = os.getenv("SECRET_KEY")
 
 # ----------------- Database Setup -----------------
 DATABASE_URL = os.getenv("DATABASE_URL")
-print(os.getenv("DATABASE_URL"))
-# os.getenv(
-#     "DATABASE_URL",
-#     "postgresql://phantomrecovery_db_user:phantomrecovery123@localhost:5432/phantomrecovery_db"
-# )
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -575,6 +570,11 @@ def send_email(to, code, purpose="password_reset"):
 # ----------------- Run App -----------------
 if __name__ == "__main__":
     with app.app_context():
+        try:
+            result = db.session.execute(text("SELECT 1")).scalar()
+            print(f"[✔] Database connected, test query returned: {result}")
+        except Exception as e:
+            print(f"[✖] Database connection failed: {e}")
         if os.getenv("RESET_DB") == "1":
             db.drop_all()
             db.create_all()
@@ -582,5 +582,5 @@ if __name__ == "__main__":
             # always ensure schema, and create missing tables
             db.create_all()
             ensure_schema()
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=10000, debug=False)
 
