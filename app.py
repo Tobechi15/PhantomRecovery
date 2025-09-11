@@ -53,7 +53,7 @@ def allowed_file(filename):
 
 # ----------------- Database Models -----------------
 class User(db.Model):
-    __tablename__ = "user"
+    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -81,7 +81,7 @@ class Case(db.Model):
 def ensure_schema():
     inspector = db.inspect(db.engine)
     tables = inspector.get_table_names()
-    if "user" not in tables:
+    if "users" not in tables:
         db.create_all()
         return
 
