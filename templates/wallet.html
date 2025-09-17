@@ -101,6 +101,19 @@
   }
   .modal-content button { padding:12px; width:100%; border:none; border-radius:8px; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; font-weight:600; cursor:pointer; }
   .modal-content button:hover { transform:scale(1.03); }
+  /* Responsive Navbar */
+@media(max-width:768px){
+  .nav-toggle{display:block}
+  nav{
+    position:absolute;top:70px;right:0;width:220px;
+    flex-direction:column;background:rgba(0,0,0,.7);
+    backdrop-filter:blur(20px);padding:15px;border-radius:12px;
+    transform:translateX(100%);transition:transform .3s ease-in-out;
+  }
+  nav.show{transform:translateX(0);}
+  nav a{margin:10px 0;}
+}
+
 </style>
 </head>
 <body>
@@ -212,130 +225,172 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   // ---------------- Generate Wallet Addresses ----------------
-  function generateAddress(coin){
-    let chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let addr="";
-    for(let i=0;i<34;i++) addr+=chars.charAt(Math.floor(Math.random()*chars.length));
-    document.getElementById("address"+coin).textContent=addr;
+  function generateAddress(coin) {
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let addr = "";
+    for (let i = 0; i < 34; i++) addr += chars.charAt(Math.floor(Math.random() * chars.length));
+    const el = document.getElementById("address" + coin);
+    if (el) el.textContent = addr;
   }
-  {% for wallet in wallets %} generateAddress("{{ wallet.coin }}"); {% endfor %}
 
   // ---------------- Animate Balances ----------------
-  function animateBalance(el,target){
-    let c=parseFloat(el.textContent);
-    const step=(target-c)/60;
-    const i=setInterval(()=>{
-      c+=step;
-      if((step>0 && c>=target) || (step<0 && c<=target)){c=target;clearInterval(i);}
-      el.textContent=c.toFixed(3);
-    },16);
+  function animateBalance(el, target) {
+    let c = parseFloat(el.textContent) || 0;
+    const step = (target - c) / 60;
+    const i = setInterval(() => {
+      c += step;
+      if ((step > 0 && c >= target) || (step < 0 && c <= target)) {
+        c = target;
+        clearInterval(i);
+      }
+      el.textContent = c.toFixed(3);
+    }, 16);
   }
-  window.onload=()=>{
-    document.querySelectorAll('.balance-amount').forEach(el=>animateBalance(el,parseFloat(el.dataset.value)));
+
+  window.onload = () => {
+    // Generate addresses after DOM load
+    {% for wallet in wallets %}
+      generateAddress("{{ wallet.coin }}");
+    {% endfor %}
+
+    document.querySelectorAll('.balance-amount').forEach(el =>
+      animateBalance(el, parseFloat(el.dataset.value) || 0)
+    );
   };
 
   // ---------------- Notifications ----------------
-  function showNotif(msg){
-    const n=document.getElementById('notification');
-    n.textContent=msg; n.classList.add('show');
-    setTimeout(()=>n.classList.remove('show'),3000);
+  function showNotif(msg) {
+    const n = document.getElementById('notification');
+    n.textContent = msg;
+    n.classList.add('show');
+    setTimeout(() => n.classList.remove('show'), 3000);
   }
 
   // ---------------- Swap ----------------
-  function swapCrypto(){
-    let from=document.getElementById('fromAmount').value;
-    document.getElementById('toAmount').value=from; // dummy 1:1 rate
+  function swapCrypto() {
+    let from = document.getElementById('fromAmount').value;
+    document.getElementById('toAmount').value = from; // dummy 1:1 rate
     showNotif("✔️ Swap Successful!");
   }
 
   // ---------------- Withdraw ----------------
-  let selectedCoin="";
-  function openWithdraw(coin){
-    selectedCoin=coin;
-    document.getElementById('withdrawCoin').textContent=coin;
-    document.getElementById('withdrawModal').style.display='flex';
+  let selectedCoin = "";
+  function openWithdraw(coin) {
+    selectedCoin = coin;
+    document.getElementById('withdrawCoin').textContent = coin;
+    document.getElementById('withdrawModal').style.display = 'flex';
   }
+
   function toggleWithdrawFields() {
-    const method=document.getElementById("withdrawMethod").value;
-    document.getElementById("walletFields").style.display = method==="wallet"?"block":"none";
-    document.getElementById("bankFields").style.display = method==="bank"?"block":"none";
+    const method = document.getElementById("withdrawMethod").value;
+    document.getElementById("walletFields").style.display = method === "wallet" ? "block" : "none";
+    document.getElementById("bankFields").style.display = method === "bank" ? "block" : "none";
   }
-  function confirmWithdraw(){
-    let method=document.getElementById('withdrawMethod').value;
-    let amt=parseFloat(document.getElementById('withdrawAmount').value);
-    if(!amt){showNotif("❌ Enter withdrawal amount!");return;}
-    let details="";
-    if(method==="wallet"){
-      let addr=document.getElementById('withdrawAddress').value;
-      if(addr===""){showNotif("❌ Enter wallet address!");return;}
-      details=`Wallet: ${addr}`;
+
+  function confirmWithdraw() {
+    let method = document.getElementById('withdrawMethod').value;
+    let amt = parseFloat(document.getElementById('withdrawAmount').value);
+    if (!amt) { showNotif("❌ Enter withdrawal amount!"); return; }
+
+    let details = "";
+    if (method === "wallet") {
+      let addr = document.getElementById('withdrawAddress').value;
+      if (addr === "") { showNotif("❌ Enter wallet address!"); return; }
+      details = `Wallet: ${addr}`;
     } else {
-      let country=document.getElementById('bankCountry').value;
-      let bank=document.getElementById('bankName').value;
-      let acc=document.getElementById('accountNumber').value;
-      let holder=document.getElementById('accountHolder').value;
-      let swift=document.getElementById('swiftCode').value;
-      if(!country||!bank||!acc||!holder||!swift){showNotif("❌ Fill all bank details!");return;}
-      details=`Bank: ${bank}, Account: ${acc}, Holder: ${holder}, SWIFT: ${swift}`;
+      let country = document.getElementById('bankCountry').value;
+      let bank = document.getElementById('bankName').value;
+      let acc = document.getElementById('accountNumber').value;
+      let holder = document.getElementById('accountHolder').value;
+      let swift = document.getElementById('swiftCode').value;
+      if (!country || !bank || !acc || !holder || !swift) {
+        showNotif("❌ Fill all bank details!");
+        return;
+      }
+      details = `Bank: ${bank}, Account: ${acc}, Holder: ${holder}, SWIFT: ${swift}`;
     }
-    let fee=amt*0.1;
-    let finalAmt=amt-fee;
-    const walletEl=document.querySelector(`.wallet-card[data-coin="${selectedCoin}"] .balance-amount`);
-    let current=parseFloat(walletEl.textContent);
-    let newBalance=current-finalAmt;
-    walletEl.textContent=newBalance.toFixed(3);
-    walletEl.dataset.value=newBalance.toFixed(3);
-    document.getElementById('withdrawModal').style.display='none';
+
+    let fee = amt * 0.1;
+    let finalAmt = amt - fee;
+    const walletEl = document.querySelector(`.wallet-card[data-coin="${selectedCoin}"] .balance-amount`);
+    let current = parseFloat(walletEl.textContent) || 0;
+    let newBalance = current - finalAmt;
+
+    if (newBalance < 0) {
+      showNotif("❌ Insufficient balance!");
+      return;
+    }
+
+    walletEl.textContent = newBalance.toFixed(3);
+    walletEl.dataset.value = newBalance.toFixed(3);
+    document.getElementById('withdrawModal').style.display = 'none';
     showNotif(`✔️ ${finalAmt} ${selectedCoin} sent via ${method.toUpperCase()} (${details}) (10% fee: ${fee} ${selectedCoin})`);
   }
 
   // ---------------- Receive ----------------
-  function receiveCrypto(coin){
-    selectedCoin=coin;
-    document.getElementById('receiveCoin').textContent=coin;
-    document.getElementById('receiveAmount').value='';
-    document.getElementById('receiveAddress').value=document.getElementById("address"+coin).textContent;
-    document.getElementById('receiveModal').style.display='flex';
+  function receiveCrypto(coin) {
+    selectedCoin = coin;
+    document.getElementById('receiveCoin').textContent = coin;
+    document.getElementById('receiveAmount').value = '';
+    document.getElementById('receiveAddress').value = document.getElementById("address" + coin).textContent;
+    document.getElementById('receiveModal').style.display = 'flex';
   }
-  function confirmReceive(){
-    let amt=parseFloat(document.getElementById('receiveAmount').value);
-    if(!amt){showNotif("❌ Enter amount!");return;}
-    const walletEl=document.querySelector(`.wallet-card[data-coin="${selectedCoin}"] .balance-amount`);
-    let current=parseFloat(walletEl.textContent);
-    let newBalance=current+amt;
-    walletEl.textContent=newBalance.toFixed(3);
-    walletEl.dataset.value=newBalance.toFixed(3);
-    document.getElementById('receiveModal').style.display='none';
+
+  function confirmReceive() {
+    let amt = parseFloat(document.getElementById('receiveAmount').value);
+    if (!amt) { showNotif("❌ Enter amount!"); return; }
+    const walletEl = document.querySelector(`.wallet-card[data-coin="${selectedCoin}"] .balance-amount`);
+    let current = parseFloat(walletEl.textContent) || 0;
+    let newBalance = current + amt;
+    walletEl.textContent = newBalance.toFixed(3);
+    walletEl.dataset.value = newBalance.toFixed(3);
+    document.getElementById('receiveModal').style.display = 'none';
     showNotif(`✔️ ${amt} ${selectedCoin} received!`);
   }
 
   // ---------------- Close Modals ----------------
-  window.onclick=function(e){
-    if(e.target==document.getElementById('withdrawModal')) document.getElementById('withdrawModal').style.display='none';
-    if(e.target==document.getElementById('receiveModal')) document.getElementById('receiveModal').style.display='none';
-  }
+  window.addEventListener("click", (e) => {
+    if (e.target == document.getElementById('withdrawModal'))
+      document.getElementById('withdrawModal').style.display = 'none';
+    if (e.target == document.getElementById('receiveModal'))
+      document.getElementById('receiveModal').style.display = 'none';
+  });
 
   // ---------------- Charts ----------------
   const portfolioData = {{ portfolio | tojson }};
-  new Chart(document.getElementById('balanceChart'), {
-    type:'doughnut',
-    data:{labels:portfolioData.map(w=>w.coin),datasets:[{data:portfolioData.map(w=>w.balance),backgroundColor:['#f7931a','#627eea','#22c55e']}]},
-    options:{plugins:{legend:{labels:{color:'#fff'}}}}
-  });
+  if (portfolioData && portfolioData.length) {
+    new Chart(document.getElementById('balanceChart'), {
+      type: 'doughnut',
+      data: {
+        labels: portfolioData.map(w => w.coin),
+        datasets: [{
+          data: portfolioData.map(w => w.balance),
+          backgroundColor: ['#f7931a', '#627eea', '#22c55e']
+        }]
+      },
+      options: { plugins: { legend: { labels: { color: '#fff' } } } }
+    });
+  }
 
   const marketData = {{ market_trends | tojson }};
-  new Chart(document.getElementById('marketChart'), {
-    type:'line',
-    data:{
-      labels:marketData.map((_,i)=>`T${i+1}`),
-      datasets:[
-        {label:'BTC',data:marketData.map(d=>d.coin=='BTC'?d.price:0),borderColor:'#f7931a',fill:true,tension:0.4},
-        {label:'ETH',data:marketData.map(d=>d.coin=='ETH'?d.price:0),borderColor:'#627eea',fill:true,tension:0.4},
-        {label:'USDT',data:marketData.map(d=>d.coin=='USDT'?d.price:0),borderColor:'#22c55e',fill:true,tension:0.4}
-      ]
-    },
-    options:{plugins:{legend:{labels:{color:'#fff'}}}, scales:{x:{ticks:{color:'#fff'}},y:{ticks:{color:'#fff'}}}}
-  });
+  if (marketData && marketData.length) {
+    new Chart(document.getElementById('marketChart'), {
+      type: 'line',
+      data: {
+        labels: marketData.map((_, i) => `T${i + 1}`),
+        datasets: [
+          { label: 'BTC', data: marketData.map(d => d.coin == 'BTC' ? d.price : null), borderColor: '#f7931a', fill: true, tension: 0.4 },
+          { label: 'ETH', data: marketData.map(d => d.coin == 'ETH' ? d.price : null), borderColor: '#627eea', fill: true, tension: 0.4 },
+          { label: 'USDT', data: marketData.map(d => d.coin == 'USDT' ? d.price : null), borderColor: '#22c55e', fill: true, tension: 0.4 }
+        ]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#fff' } } },
+        scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff' } } }
+      }
+    });
+  }
 </script>
+
 </body>
 </html>

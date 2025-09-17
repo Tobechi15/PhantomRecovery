@@ -245,6 +245,11 @@
     footer a { color:#4cc9f0; text-decoration:none; }
     footer a:hover { text-decoration: underline; }
 
+    @media (max-width: 768px) {
+      .nav-links {position: absolute;top: 70px;left: 0;width: 100%;background: rgba(0,0,0,0.85);backdrop-filter: blur(10px);flex-direction: column;align-items: center;gap: 20px;max-height: 0;opacity: 0;overflow: hidden;pointer-events: none;transition: max-height 0.4s ease, opacity 0.3s ease;}
+      .nav-links.show {max-height: 500px;opacity: 1;pointer-events: all;padding: 20px 0;}
+      .hamburger {display: block;background: none;border: none;font-size: 1.8rem;cursor: pointer;z-index: 1100;}
+    }
     /* ---------------- Animations ---------------- */
     @keyframes gradientShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
     @keyframes slideInUp { from{opacity:0;transform:translateY(40px);} to{opacity:1;transform:translateY(0);} }

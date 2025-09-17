@@ -4,6 +4,7 @@ import time
 import requests
 from dotenv import load_dotenv
 from bit import Key  # ✅ replaces bitcoinlib
+import logging
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_dance.contrib.google import make_google_blueprint, google
@@ -74,6 +75,7 @@ class Case(db.Model):
     amount_lost = db.Column(db.Float)
     transaction_id = db.Column(db.String(255))
     notes = db.Column(db.Text)
+    status = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(
         db.DateTime,
@@ -81,6 +83,16 @@ class Case(db.Model):
         onupdate=db.func.current_timestamp(),
     )
 
+class Withdrawal(db.Model):
+    __tablename__ = "withdrawals"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    currency = db.Column(db.String(10), nullable=False)  # BTC, ETH, USDT, NGN
+    amount = db.Column(db.Float, nullable=False)
+    address = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), default="pending")
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 # ----------------- Schema Helper -----------------
 def ensure_schema():
@@ -393,6 +405,266 @@ def oauth_callback():
 
     flash("❌ OAuth login failed. Try again.", "danger")
     return redirect(url_for("login"))
+
+@app.route("/admin-login-form")
+def admin_login_form():
+    # If already logged in, redirect straight to dashboard
+    if session.get("admin_logged_in"):
+        return redirect(url_for("admin_dashboard"))
+    return render_template("admin.html")  # Serve a proper template
+
+# ✅ Admin Login Route
+@app.route("/admin-login", methods=["POST"])
+def admin_login():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    # 🔐 Hardcoded for now, later check DB:
+    # Example: admin_user = Admin.query.filter_by(username=username).first()
+    # if admin_user and check_password_hash(admin_user.password, password):
+    if username == "admin" and password == "1234":
+        session["admin_logged_in"] = True
+        flash("Welcome, Admin!", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    flash("Invalid username or password", "error")
+    return redirect(url_for("admin_login_form"))
+
+# ✅ Admin Logout Route
+@app.route("/admin-logout", methods=["POST"])
+def admin_logout():
+    session.pop("admin_logged_in", None)
+    flash("You have been logged out.", "info")
+    return redirect(url_for("admin_login_form"))
+
+# ✅ Admin Dashboard Route
+@app.route("/admin-dashboard")
+def admin_dashboard():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_form"))
+
+    total_users = User.query.count()
+    total_cases = Case.query.count()
+    pending_cases = Case.query.filter_by(status="Pending").count()
+    pending_withdrawals = Withdrawal.query.filter_by(status="Pending").count()
+    total_balance = sum([u.btc_balance + u.eth_balance for u in User.query.all()])
+
+    # Recent activities
+    recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    recent_cases = Case.query.order_by(Case.created_at.desc()).limit(5).all()
+    recent_withdrawals = Withdrawal.query.order_by(Withdrawal.created_at.desc()).limit(5).all()
+
+    recent_activities = []
+    for u in recent_users:
+        recent_activities.append(f"New user registered: {u.username}")
+    for c in recent_cases:
+        recent_activities.append(f"New case submitted: {c.issue_type} by {c.user.username}")
+    for w in recent_withdrawals:
+        recent_activities.append(f"New withdrawal request: {w.amount} {w.currency} by {w.user.username}")
+
+    return render_template(
+        "admin_dashboard.html",
+        total_users=total_users,
+        total_cases=total_cases,
+        pending_cases=pending_cases,
+        pending_withdrawals=pending_withdrawals,
+        total_balance=total_balance,
+        recent_activities=recent_activities
+    )
+
+
+@app.route("/admin-users")
+def admin_users():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_form"))
+    users = User.query.all()
+    return render_template("admin_users.html", users=users)
+
+@app.route("/admin/users/delete/<int:user_id>", methods=["POST"])
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    db.session.delete(user)
+    db.session.commit()
+    flash("User deleted successfully", "success")
+    return redirect(url_for("admin_users"))
+
+# Admin Cases List Page
+@app.route("/admin-cases")
+def admin_cases():
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    # Fetch all cases
+    cases = Case.query.order_by(Case.created_at.desc()).all()  # latest first
+    return render_template("admin_cases.html", cases=cases)
+
+# View individual case details
+@app.route("/admin-case/<int:case_id>/view")
+def view_case(case_id):
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    case = Case.query.get(case_id)
+    if not case:
+        flash("Case not found", "error")
+        return redirect(url_for("admin_cases"))
+
+    return render_template("admin_case_detail.html", case=case)
+
+# Mark a case as recovered
+@app.route("/admin-case/<int:case_id>/recover", methods=["POST"])
+def mark_case_recovered(case_id):
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    case = Case.query.get(case_id)
+    if case:
+        case.status = "Recovered"
+        db.session.commit()
+        flash(f"Case #{case.id} marked as recovered!", "success")
+    else:
+        flash("Case not found!", "error")
+
+    return redirect(url_for("admin_cases"))
+
+# Delete a case
+@app.route("/admin-case/<int:case_id>/delete", methods=["POST"])
+def delete_case(case_id):
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    case = Case.query.get(case_id)
+    if case:
+        db.session.delete(case)
+        db.session.commit()
+        flash(f"Case #{case.id} deleted successfully!", "success")
+    else:
+        flash("Case not found!", "error")
+
+    return redirect(url_for("admin_cases"))
+
+# Admin Withdrawals Page
+@app.route("/admin-withdrawals")
+def admin_withdrawals():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_form"))
+
+    withdrawals = Withdrawal.query.order_by(Withdrawal.created_at.desc()).all()
+    return render_template("admin_withdrawals.html", withdrawals=withdrawals)
+
+
+# Approve Withdrawal
+@app.route("/admin-withdrawal/<int:withdrawal_id>/approve", methods=["POST"])
+def approve_withdrawal(withdrawal_id):
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    withdrawal = Withdrawal.query.get(withdrawal_id)
+    if withdrawal and withdrawal.status == "Pending":
+        withdrawal.status = "Approved"
+        db.session.commit()
+        notify_user(withdrawal.user, withdrawal.amount, withdrawal.currency)
+        flash(f"Withdrawal #{withdrawal.id} approved and user notified!", "success")
+    else:
+        flash("Withdrawal not found or already processed.", "error")
+
+    return redirect(url_for("admin_withdrawals"))
+
+
+# Decline Withdrawal
+@app.route("/admin-withdrawal/<int:withdrawal_id>/decline", methods=["POST"])
+def decline_withdrawal(withdrawal_id):
+    if not session.get("admin_logged_in"):
+        flash("Please login first!", "warning")
+        return redirect(url_for("admin_login_form"))
+
+    withdrawal = Withdrawal.query.get(withdrawal_id)
+    if withdrawal and withdrawal.status == "Pending":
+        withdrawal.status = "Declined"
+        db.session.commit()
+        notify_user(withdrawal.user, withdrawal.amount, withdrawal.currency, declined=True)
+        flash(f"Withdrawal #{withdrawal.id} declined and user notified!", "info")
+    else:
+        flash("Withdrawal not found or already processed.", "error")
+
+    return redirect(url_for("admin_withdrawals"))
+
+# Notification Function
+def notify_user(user, amount, currency, declined=False):
+    message = f"Your withdrawal of {amount} {currency} has been {'declined' if declined else 'approved'}."
+    
+    # --- Email ---
+    try:
+        send_email(user.email, "Withdrawal Update", message)
+    except Exception as e:
+        logging.error(f"Failed to send email to {user.email}: {e}")
+
+    # --- SMS ---
+    try:
+        client = Client(TWILIO_SID, TWILIO_AUTH)
+        client.messages.create(
+            body=message,
+            from_=TWILIO_PHONE_NUMBER,
+            to=user.phone_number
+        )
+    except Exception as e:
+        logging.error(f"Failed to send SMS to {user.phone_number}: {e}")
+
+    # --- WhatsApp ---
+    try:
+        client.messages.create(
+            body=message,
+            from_="whatsapp:+14155238886",  # Twilio WhatsApp sandbox
+            to=f"whatsapp:{user.phone_number}"
+        )
+    except Exception as e:
+        logging.error(f"Failed to send WhatsApp to {user.phone_number}: {e}")
+
+
+@app.route("/admin-settings", methods=["GET", "POST"])
+def admin_settings():
+    if not session.get("admin_logged_in"):
+        return redirect(url_for("admin_login_form"))
+
+    admin = Admin.query.first()  # assuming single admin, adjust if multiple admins
+
+    if request.method == "POST":
+        # --- Handle Password Update ---
+        current_password = request.form.get("current_password")
+        new_password = request.form.get("new_password")
+        confirm_password = request.form.get("confirm_password")
+
+        if current_password and new_password and confirm_password:
+            if not check_password_hash(admin.password, current_password):
+                flash("Current password is incorrect.", "error")
+            elif new_password != confirm_password:
+                flash("New passwords do not match.", "error")
+            else:
+                admin.password = generate_password_hash(new_password)
+                db.session.commit()
+                flash("Password updated successfully!", "success")
+
+        # --- Handle Notification Settings ---
+        email_notifications = request.form.get("email_notifications")
+        sms_notifications = request.form.get("sms_notifications")
+
+        if email_notifications:
+            admin.email_notifications = email_notifications
+        if sms_notifications:
+            admin.sms_notifications = sms_notifications
+
+        db.session.commit()
+        flash("Notification settings updated!", "success")
+
+        return redirect(url_for("admin_settings"))
+
+    # GET request: render settings page
+    return render_template("admin_settings.html", admin=admin)
 
 # ----------------- Dashboard -----------------
 @app.route("/dashboard")

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin | Settings</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background: linear-gradient(135deg,#0a0f2c,#1e3a8a); color:#fff; height:100vh; overflow:hidden;}
+.dashboard{display:flex;width:100%;height:100vh;}
+
+/* Sidebar */
+.sidebar{
+  width:240px;
+  background:#0c1f44;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+  box-shadow:2px 0 8px rgba(0,0,0,0.4);
+  transition: transform 0.3s ease;
+}
+.sidebar h2{text-align:center;margin-bottom:30px;font-size:1.5rem;color:#4fa3ff;}
+.sidebar a,.sidebar button{display:block;padding:12px;background:rgba(255,255,255,0.05);margin-bottom:8px;border-radius:6px;color:#fff;text-align:center;border:none;cursor:pointer;transition: all 0.3s ease;}
+.sidebar a:hover,.sidebar button:hover{background: rgba(79,163,255,0.3);transform: translateX(4px);}
+
+/* Main Content */
+.main-content{flex:1;padding:20px;overflow-y:auto;position:relative;}
+.main-content h2{margin-bottom:20px;font-size:1.8rem;animation: fadeIn 0.8s ease forwards;}
+.form-group{margin-bottom:15px;}
+.form-group label{display:block;margin-bottom:5px;font-weight:600;}
+.form-group input, .form-group select{width:100%;padding:8px 12px;border-radius:6px;border:none;background:rgba(255,255,255,0.1);color:#fff;}
+.form-group input::placeholder{color:rgba(255,255,255,0.6);}
+.form-group button{padding:10px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;transition:0.3s;}
+.form-group button:hover{background:#1d4ed8;box-shadow:0 0 8px #60a5fa;}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* Hamburger */
+.menu-btn{display:none;font-size:22px;cursor:pointer;margin-bottom:15px;color:#fff;position:fixed;top:15px;left:15px;z-index:1001;}
+@media(max-width:768px){
+  .menu-btn{display:block;}
+  .sidebar{position:fixed;top:0;left:-260px;height:100%;width:240px;z-index:1000;}
+  .sidebar.active{transform:translateX(260px);}
+  .main-content{padding:15px;}
+}
+</style>
+</head>
+<body>
+
+<i class="fas fa-bars menu-btn" id="menu-toggle"></i>
+
+<div class="dashboard">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h2>Phantom Admin</h2>
+    <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('admin_users') }}">Users</a>
+    <a href="{{ url_for('admin_cases') }}">Cases</a>
+    <a href="{{ url_for('admin_withdrawals') }}">Withdrawals</a>
+    <a href="{{ url_for('admin_settings') }}">Settings</a>
+    <form action="{{ url_for('admin_logout') }}" method="POST">
+      <button type="submit">Logout</button>
+    </form>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h2>Admin Settings</h2>
+
+    <!-- Change Password -->
+    <div class="form-group">
+      <form method="POST" action="{{ url_for('update_password') }}">
+        <label for="current_password">Current Password</label>
+        <input type="password" id="current_password" name="current_password" placeholder="Enter current password" required>
+        
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="new_password" placeholder="Enter new password" required>
+        
+        <label for="confirm_password">Confirm New Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password" required>
+        
+        <button type="submit">Update Password</button>
+      </form>
+    </div>
+
+    <!-- Notification Settings -->
+    <div class="form-group">
+      <form method="POST" action="{{ url_for('update_notifications') }}">
+        <label for="email_notifications">Email Notifications</label>
+        <select id="email_notifications" name="email_notifications">
+          <option value="enabled" {% if admin.email_notifications == 'enabled' %}selected{% endif %}>Enabled</option>
+          <option value="disabled" {% if admin.email_notifications == 'disabled' %}selected{% endif %}>Disabled</option>
+        </select>
+
+        <label for="sms_notifications">SMS Notifications</label>
+        <select id="sms_notifications" name="sms_notifications">
+          <option value="enabled" {% if admin.sms_notifications == 'enabled' %}selected{% endif %}>Enabled</option>
+          <option value="disabled" {% if admin.sms_notifications == 'disabled' %}selected{% endif %}>Disabled</option>
+        </select>
+
+        <button type="submit">Update Notification Settings</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const menuToggle = document.getElementById('menu-toggle');
+const sidebar = document.getElementById('sidebar');
+
+menuToggle.addEventListener('click', () => {
+  sidebar.classList.toggle('active');
+});
+
+// Click outside sidebar closes it on mobile
+document.addEventListener('click', (e)=>{
+  if(window.innerWidth <= 768 && sidebar.classList.contains('active')){
+    if(!sidebar.contains(e.target) && e.target !== menuToggle){
+      sidebar.classList.remove('active');
+    }
+  }
+});
+</script>
+
+</body>
+</html>

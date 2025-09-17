@@ -186,6 +186,24 @@
   }
   .stat-card h2{font-size:24px; margin-bottom:5px;}
   .stat-card p{font-size:14px; color:#60a5fa;}
+    /* ---------------- Responsive ---------------- */
+  @media(max-width: 768px){
+    header h1{font-size:16px;}hhhhh
+    nav{display:none;}
+    .menu-btn{display:block;color:#fff;}
+    .container{flex-direction:column;}
+    .sidebar{
+      position:fixed;
+      top:0;
+      left:-260px;
+      height:100%;
+      width:220px;
+      z-index:999;
+      border-radius:0;
+    }
+    .sidebar.active{transform: translateX(260px);}
+    .main{flex:1;}
+  }
 </style>
 </head>
 <body>

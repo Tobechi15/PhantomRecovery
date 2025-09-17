@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin | Case Detail</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<style>
+body{background: linear-gradient(135deg,#0a0f2c,#1e3a8a); color:#fff; font-family:'Segoe UI',sans-serif;}
+.container{max-width:800px;margin:50px auto;background: rgba(0,0,0,0.3); padding:30px;border-radius:12px; animation: fadeIn 0.8s ease;}
+h2{margin-bottom:20px; text-align:center;}
+.detail-row{margin-bottom:15px;}
+.detail-row span{font-weight:bold;}
+button{padding:10px 15px;background:#2563eb;border:none;border-radius:8px;color:#fff;cursor:pointer;transition:0.3s;}
+button:hover{background:#1d4ed8;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>Case #{{ case.id }} Details</h2>
+  <div class="detail-row"><span>User:</span> {{ case.user.username }}</div>
+  <div class="detail-row"><span>Email:</span> {{ case.user.email }}</div>
+  <div class="detail-row"><span>Issue Type:</span> {{ case.issue_type }}</div>
+  <div class="detail-row"><span>Amount Lost:</span> {{ case.amount_lost }}</div>
+  <div class="detail-row"><span>Notes:</span> {{ case.notes }}</div>
+  <div class="detail-row"><span>Status:</span> {{ case.status }}</div>
+  <button onclick="window.history.back()">Back</button>
+</div>
+</body>
+</html>

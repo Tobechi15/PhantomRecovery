@@ -131,6 +131,41 @@
     footer a:hover{
       color:#93c5fd;
     }
+
+/* Mobile */
+  @media(max-width:768px){
+    nav{
+      position:fixed;
+      top:60px;
+      right:-250px;
+      flex-direction:column;
+      background:rgba(0,0,0,0.95);
+      width:220px;
+      padding:20px;
+      gap:20px;
+      border-radius:8px 0 0 8px;
+      transition:right 0.4s ease;
+      z-index:1001;
+    }
+    nav.active{right:0;}
+    nav a{
+      font-size:1.1rem;
+      opacity:0;
+      transform:translateX(30px);
+      transition:all 0.4s ease;
+    }
+    nav.active a:nth-child(1){transition-delay:0.1s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(2){transition-delay:0.2s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(3){transition-delay:0.3s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(4){transition-delay:0.4s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(5){transition-delay:0.5s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(6){transition-delay:0.6s;opacity:1;transform:translateX(0);}
+    nav.active a:nth-child(7){transition-delay:0.7s;opacity:1;transform:translateX(0);}
+    .menu-btn{display:block;}
+    h1{font-size:1.8rem;margin:25px 0;}
+    .services-container{grid-template-columns:1fr;gap:15px;padding:0 15px 30px;}
+    .service-card img{height:140px;}
+  }
   </style>
 </head>
 <body>
